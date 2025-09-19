@@ -6,7 +6,8 @@ from aiogram.fsm.context import FSMContext
 from bot.lexicon.lexicon_ru import LEXICON
 from bot.models.data_store import get_all_users, grant_admin_role, users_db
 from bot.keyboards.menu_keyboards import (
-    create_admin_menu_keyboard, create_back_to_admin_keyboard
+    create_admin_menu_keyboard, create_back_to_admin_keyboard,
+    create_grant_admin_keyboard
 )
 from bot.states.states import AdminStates
 # Импортируем кастомные фильтры
@@ -68,7 +69,7 @@ async def cmd_grant_admin(message: Message, state: FSMContext):
     args = message.text.split()
     if len(args) < 2:
         # Если ID не указан в команде, запускаем FSM для запроса ID
-        await message.answer(LEXICON["admin_grant_prompt"])
+        await message.answer(LEXICON["admin_grant_prompt"], reply_markup=create_grant_admin_keyboard())
         await state.set_state(AdminStates.waiting_for_user_id_to_grant)
         return
 
@@ -82,7 +83,10 @@ async def cmd_grant_admin(message: Message, state: FSMContext):
 # 2. Хэндлер для кнопки "Выдать админку 🛠". Используем фильтр IsMainAdmin.
 @router.callback_query(F.data == "admin_grant", IsMainAdmin())
 async def grant_admin_button_handler(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text(LEXICON["admin_grant_prompt"])
+    await callback.message.edit_text(
+        LEXICON["admin_grant_prompt"],
+        reply_markup=create_grant_admin_keyboard()
+    )
     await state.set_state(AdminStates.waiting_for_user_id_to_grant)
     await callback.answer()
 

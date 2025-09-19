@@ -1,4 +1,5 @@
 from typing import Optional, Any
+from math import ceil
 from bot.config import config
 
 # Временные хранилища данных в памяти
@@ -12,29 +13,34 @@ order_counter = 0
 
 # --- Функции управления данными (Имитация запросов к БД) ---
 
-def register_user(user_id: int, username: Optional[str], referrer_id: Optional[int] = None) -> bool:
-    """Регистрирует нового пользователя, если его еще нет в базе."""
+def register_user(user_id: int, username: Optional[str], referrer_id: Optional[int] = None) -> int | None:
+    """
+    Регистрирует нового пользователя.
+    Возвращает ID реферера, если пользователь новый и пришел по ссылке.
+    """
+    assigned_referrer_id = None
     if user_id not in users_db:
         # Определяем роль. Если это главный админ, присваиваем соответствующую роль.
         role = "main_admin" if user_id == config.MAIN_ADMIN_ID else "client"
 
         # Убедимся, что пользователь не является своим же рефералом
-        if referrer_id == user_id:
-            referrer_id = None
+        if referrer_id and referrer_id != user_id:
+            assigned_referrer_id = referrer_id
 
         users_db[user_id] = {
             "user_id": user_id,
             "username": username,
             "role": role,
-            "referrer_id": referrer_id
+            "referrer_id": assigned_referrer_id
         }
-        return True
+        return assigned_referrer_id
+
     # Обновляем username, если он изменился
     users_db[user_id]["username"] = username
     # Убедимся, что роль главного админа актуальна (важно при перезапуске MemoryStorage)
     if user_id == config.MAIN_ADMIN_ID and users_db[user_id]["role"] != "main_admin":
         users_db[user_id]["role"] = "main_admin"
-    return False
+    return None
 
 def get_user_data(user_id: int) -> Optional[dict[str, Any]]:
     """Получает данные пользователя."""
@@ -58,15 +64,46 @@ def add_order(user_id: int, details: dict) -> int:
     orders_db[order_id] = {
         "order_id": order_id,
         "user_id": user_id,
-        "status": "new",
+        "status": "Новый", # Статус по умолчанию
         "details": details
     }
     return order_id
 
-def get_referrals(user_id: int) -> list[dict[str, Any]]:
-    """Получает список рефералов пользователя."""
-    # TODO: Replace with DB query (SELECT * WHERE referrer_id = ?)
-    return [user for user in users_db.values() if user.get("referrer_id") == user_id]
+def get_user_orders(user_id: int, page: int = 1, page_size: int = 3) -> tuple[list, int]:
+    """Получает список заказов пользователя с пагинацией."""
+    user_orders = sorted(
+        [order for order in orders_db.values() if order["user_id"] == user_id],
+        key=lambda x: x['order_id'],
+        reverse=True
+    )
+    
+    total_items = len(user_orders)
+    if total_items == 0:
+        return [], 0
+        
+    total_pages = ceil(total_items / page_size)
+    
+    start_index = (page - 1) * page_size
+    end_index = start_index + page_size
+    
+    return user_orders[start_index:end_index], total_pages
+
+
+def get_referrals(user_id: int, page: int = 1, page_size: int = 10) -> tuple[list, int]:
+    """Получает список рефералов пользователя с пагинацией."""
+    referrals = [user for user in users_db.values() if user.get("referrer_id") == user_id]
+    
+    total_items = len(referrals)
+    if total_items == 0:
+        return [], 0
+
+    total_pages = ceil(total_items / page_size)
+
+    start_index = (page - 1) * page_size
+    end_index = start_index + page_size
+    
+    return referrals[start_index:end_index], total_pages
+
 
 def grant_admin_role(user_id: int) -> bool:
     """Выдает права администратора пользователю."""
