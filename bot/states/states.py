@@ -3,7 +3,7 @@ from aiogram.fsm.state import State, StatesGroup
 # Состояния для процесса создания заявки
 class ApplicationStates(StatesGroup):
     choosing_service = State()           # Выбор основной услуги
-    #choosing_subservice = State()        # Выбор подуслуги (упрощено)
+    choosing_subservice = State()        # Выбор подуслуги
     answering_questions = State()        # Единое состояние для ответов на вопросы
 
 # Состояния для админских действий

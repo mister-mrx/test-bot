@@ -1,5 +1,7 @@
 from typing import Optional, Any
 from math import ceil
+import random
+import string
 from bot.config import config
 
 # Временные хранилища данных в памяти
@@ -8,10 +10,17 @@ from bot.config import config
 # Структура пользователя: {user_id: {"username": str, "role": str, "referrer_id": int}}
 users_db: dict[int, dict[str, Any]] = {}
 # Структура заказа: {order_id: {"user_id": int, "status": str, "details": dict}}
-orders_db: dict[int, dict[str, Any]] = {}
-order_counter = 0
+orders_db: dict[str, dict[str, Any]] = {}
+
 
 # --- Функции управления данными (Имитация запросов к БД) ---
+
+def generate_unique_order_id(length: int = 6) -> str:
+    """Генерирует уникальный 6-значный ID для заказа."""
+    while True:
+        order_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+        if order_id not in orders_db:
+            return order_id
 
 def register_user(user_id: int, username: Optional[str], referrer_id: Optional[int] = None) -> int | None:
     """
@@ -56,11 +65,9 @@ def get_orders_count(user_id: int) -> int:
     # TODO: Replace with DB query (COUNT(*))
     return len([order for order in orders_db.values() if order["user_id"] == user_id])
 
-def add_order(user_id: int, details: dict) -> int:
-    """Добавляет новый заказ."""
-    global order_counter
-    order_counter += 1
-    order_id = order_counter
+def add_order(user_id: int, details: dict) -> str:
+    """Добавляет новый заказ с уникальным ID."""
+    order_id = generate_unique_order_id()
     orders_db[order_id] = {
         "order_id": order_id,
         "user_id": user_id,
@@ -73,8 +80,7 @@ def get_user_orders(user_id: int, page: int = 1, page_size: int = 3) -> tuple[li
     """Получает список заказов пользователя с пагинацией."""
     user_orders = sorted(
         [order for order in orders_db.values() if order["user_id"] == user_id],
-        key=lambda x: x['order_id'],
-        reverse=True
+        key=lambda x: x['order_id']
     )
     
     total_items = len(user_orders)
