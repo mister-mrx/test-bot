@@ -9,3 +9,10 @@ class ApplicationStates(StatesGroup):
 # Состояния для админских действий
 class AdminStates(StatesGroup):
     waiting_for_user_id_to_grant = State() # Ожидание ввода ID для выдачи прав
+
+# Состояния для управления заказами в админ-панели
+class AdminOrderStates(StatesGroup):
+    selecting_order = State()       # Ожидание ввода ID или номера заказа
+    viewing_order = State()         # Просмотр конкретного заказа
+    changing_status = State()       # Выбор нового статуса
+    setting_name = State()          # Ожидание ввода нового названия

@@ -159,13 +159,12 @@ async def process_answer(message: Message, state: FSMContext, bot: Bot):
 
         summary_text = "\n\n".join(summary_lines)
 
-        # Отправка уведомлений
-        for chat_id in [config.MAIN_ADMIN_ID, config.GROUP_CHAT_ID]:
-            if chat_id:
-                try:
-                    await bot.send_message(chat_id, summary_text, parse_mode="Markdown")
-                except Exception as e:
-                    logging.error(f"Failed to send message to {chat_id}: {e}")
+        # Отправка уведомления только в групповой чат
+        if config.GROUP_CHAT_ID:
+            try:
+                await bot.send_message(config.GROUP_CHAT_ID, summary_text, parse_mode="Markdown")
+            except Exception as e:
+                logging.error(f"Failed to send message to group chat {config.GROUP_CHAT_ID}: {e}")
 
         await message.answer(
             LEXICON["fsm_finish"].format(order_id=order_id)

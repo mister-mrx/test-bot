@@ -3,13 +3,14 @@ from math import ceil
 import random
 import string
 from bot.config import config
+from bot.lexicon.lexicon_ru import ORDER_STATUSES
 
 # Временные хранилища данных в памяти
 # TODO: Replace with DB logic (e.g., SQLAlchemy/TortoiseORM models)
 
 # Структура пользователя: {user_id: {"username": str, "role": str, "referrer_id": int}}
 users_db: dict[int, dict[str, Any]] = {}
-# Структура заказа: {order_id: {"user_id": int, "status": str, "details": dict}}
+# Структура заказа: {order_id: {"user_id": int, "status": str, "name": str|None, "details": dict}}
 orders_db: dict[str, dict[str, Any]] = {}
 
 
@@ -71,7 +72,8 @@ def add_order(user_id: int, details: dict) -> str:
     orders_db[order_id] = {
         "order_id": order_id,
         "user_id": user_id,
-        "status": "Новый", # Статус по умолчанию
+        "status": "new", # Статус по умолчанию (ключ из ORDER_STATUSES)
+        "name": None, # Название по умолчанию
         "details": details
     }
     return order_id
@@ -123,3 +125,44 @@ def grant_admin_role(user_id: int) -> bool:
 def get_all_users() -> list[dict[str, Any]]:
     """Получает список всех пользователей."""
     return list(users_db.values())
+
+# --- Новые функции для управления заказами ---
+
+def get_all_orders(status_filter: Optional[str] = None, page: int = 1, page_size: int = 10) -> tuple[list, int]:
+    """Получает список всех заказов с фильтрацией и пагинацией."""
+    all_orders = sorted(orders_db.values(), key=lambda x: x['order_id'], reverse=True)
+    
+    if status_filter:
+        filtered_orders = [order for order in all_orders if order["status"] == status_filter]
+    else:
+        filtered_orders = all_orders
+        
+    total_items = len(filtered_orders)
+    if total_items == 0:
+        return [], 0
+
+    total_pages = ceil(total_items / page_size)
+    start_index = (page - 1) * page_size
+    end_index = start_index + page_size
+    
+    return filtered_orders[start_index:end_index], total_pages
+
+def get_order_by_id(order_id: str) -> Optional[dict[str, Any]]:
+    """Получает заказ по его ID."""
+    return orders_db.get(order_id.upper())
+
+def update_order_status(order_id: str, new_status: str) -> bool:
+    """Обновляет статус заказа."""
+    order = get_order_by_id(order_id)
+    if order and new_status in ORDER_STATUSES:
+        order["status"] = new_status
+        return True
+    return False
+
+def update_order_name(order_id: str, new_name: str) -> bool:
+    """Обновляет название заказа."""
+    order = get_order_by_id(order_id)
+    if order:
+        order["name"] = new_name
+        return True
+    return False
